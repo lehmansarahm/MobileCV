@@ -1,6 +1,7 @@
 package edu.temple.mobilecv;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -33,10 +34,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import org.tensorflow.demo.env.ImageUtils;
+
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -45,6 +48,8 @@ import java.util.Date;
 import java.util.List;
 
 import static edu.temple.mobilecv.Constants.DEBUG_TAG;
+import static edu.temple.mobilecv.Constants.DEFAULT_HEIGHT;
+import static edu.temple.mobilecv.Constants.DEFAULT_WIDTH;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -59,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private String cameraID;
 
     private Size imageDimension;
-    private static final int DEFAULT_HEIGHT = 480, DEFAULT_WIDTH = 640;
+    private int previewWidth = DEFAULT_WIDTH, previewHeight = DEFAULT_HEIGHT;
 
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
@@ -214,18 +219,7 @@ public class MainActivity extends AppCompatActivity {
 
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(camera.getId());
-            Size[] jpegSizes = null;
-            if (characteristics != null) {
-                jpegSizes =
-                        characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                        .getOutputSizes(ImageFormat.JPEG);
-            }
-
-            int width = (jpegSizes != null && 0 < jpegSizes.length) ? jpegSizes[0].getWidth() : DEFAULT_WIDTH;
-            int height = (jpegSizes != null && 0 < jpegSizes.length) ? jpegSizes[0].getHeight() : DEFAULT_HEIGHT;
-
-            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+            ImageReader reader = ImageReader.newInstance(DEFAULT_WIDTH, DEFAULT_HEIGHT, ImageFormat.YUV_420_888, 1);
             Surface readerSurface = reader.getSurface();
 
             List<Surface> outputSurfaces = new ArrayList<>(2);
@@ -237,22 +231,36 @@ public class MainActivity extends AppCompatActivity {
             captureBuilder.addTarget(readerSurface);
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
 
-            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            final int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
 
             final File file = new File(Environment.getExternalStorageDirectory()
-                    + "/mobileCV" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + ".png");
+                    + "/mobileCV" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + ".csv");
+            final ProgressDialog dialog = new ProgressDialog(this);
+            dialog.setTitle("Please wait...");
+            dialog.setMessage("Classifying image.  Please wait...");
+
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            dialog.show();
+                        }
+                    });
+
                     Image image = null;
                     try {
                         image = reader.acquireLatestImage();
-                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                        byte[][] yuvBytes = new byte[3][];
+                        Image.Plane[] planes = image.getPlanes();
 
-                        byte[] bytes = new byte[buffer.capacity()];
-                        buffer.get(bytes);
-                        save(bytes);
+                        fillBytes(planes, yuvBytes);
+                        save(yuvBytes[0], yuvBytes[1], yuvBytes[2],
+                                planes[0].getRowStride(),
+                                planes[1].getRowStride(),
+                                planes[1].getPixelStride());
                     } catch (IOException e) {
                         e.printStackTrace();
                     } finally {
@@ -260,18 +268,35 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                private void save(byte[] bytes) throws IOException {
-                    OutputStream output = null;
-                    try {
-                        output = new FileOutputStream(file);
-                        output.write(bytes);
+                private void save(byte[] yData, byte[] uData, byte[] vData, int yRowStride,
+                                  int uvRowStride, int uvPixelStride) throws IOException {
+                    int[] rgbBytes = new int[previewWidth * previewHeight];
+                    ImageUtils.convertYUV420ToARGB8888(yData, uData, vData,
+                            previewWidth, previewHeight,
+                            yRowStride, uvRowStride, uvPixelStride,
+                            rgbBytes);
 
-                        Intent intent = new Intent(MainActivity.this, ClassifierActivity.class);
-                        intent.putExtra(Constants.EXTRA_IMAGE_FILEPATH, file.getAbsolutePath());
-                        startActivity(intent);
-                    } finally {
-                        if (null != output) output.close();
+                    BufferedWriter br = new BufferedWriter(new FileWriter(file));
+                    StringBuilder sb = new StringBuilder();
+                    for (int rgbByte : rgbBytes) {
+                        sb.append(rgbByte);
+                        sb.append(",");
                     }
+
+                    br.write(sb.toString());
+                    br.close();
+
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            dialog.dismiss();
+                        }
+                    });
+
+                    Intent intent = new Intent(MainActivity.this, ClassifierActivity.class);
+                    intent.putExtra(Constants.EXTRA_ROTATION, rotation);
+                    intent.putExtra("rgb_bytes", file.getAbsolutePath());
+                    startActivity(intent);
                 }
             };
 
@@ -340,6 +365,18 @@ public class MainActivity extends AppCompatActivity {
             cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, mBackgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
+        }
+    }
+
+    protected void fillBytes(final Image.Plane[] planes, final byte[][] yuvBytes) {
+        // Because of the variable row stride it's not possible to know in
+        // advance the actual necessary dimensions of the yuv planes.
+        for (int i = 0; i < planes.length; ++i) {
+            final ByteBuffer buffer = planes[i].getBuffer();
+            if (yuvBytes[i] == null) {
+                yuvBytes[i] = new byte[buffer.capacity()];
+            }
+            buffer.get(yuvBytes[i]);
         }
     }
 }
