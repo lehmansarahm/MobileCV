@@ -217,7 +217,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             ImageReader reader = ImageReader.newInstance(DEFAULT_WIDTH, DEFAULT_HEIGHT, ImageFormat.YUV_420_888, 1);
             Surface readerSurface = reader.getSurface();
@@ -280,7 +279,7 @@ public class MainActivity extends AppCompatActivity {
                     StringBuilder sb = new StringBuilder();
                     for (int rgbByte : rgbBytes) {
                         sb.append(rgbByte);
-                        sb.append(",");
+                        sb.append(Constants.COMMA);
                     }
 
                     br.write(sb.toString());
@@ -295,7 +294,7 @@ public class MainActivity extends AppCompatActivity {
 
                     Intent intent = new Intent(MainActivity.this, ClassifierActivity.class);
                     intent.putExtra(Constants.EXTRA_ROTATION, rotation);
-                    intent.putExtra("rgb_bytes", file.getAbsolutePath());
+                    intent.putExtra(Constants.EXTRA_CSV_PATH, file.getAbsolutePath());
                     startActivity(intent);
                 }
             };
@@ -369,8 +368,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void fillBytes(final Image.Plane[] planes, final byte[][] yuvBytes) {
-        // Because of the variable row stride it's not possible to know in
-        // advance the actual necessary dimensions of the yuv planes.
         for (int i = 0; i < planes.length; ++i) {
             final ByteBuffer buffer = planes[i].getBuffer();
             if (yuvBytes[i] == null) {

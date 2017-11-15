@@ -44,7 +44,7 @@ public class ClassifierActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         sensorOrientation = 90 - intent.getIntExtra(Constants.EXTRA_ROTATION, 0);
-        String rgbFilepath = intent.getStringExtra("rgb_bytes");
+        String rgbFilepath = intent.getStringExtra(Constants.EXTRA_CSV_PATH);
         int[] rgbBytes = getRgbBytes(rgbFilepath);
 
         Bitmap croppedBitmap = getCroppedBitmap(rgbBytes);
@@ -65,7 +65,7 @@ public class ClassifierActivity extends AppCompatActivity {
             String line;
 
             while ((line = br.readLine()) != null) {
-                String[] snippets = line.split(",");
+                String[] snippets = line.split(Constants.COMMA);
                 for (String snippet : snippets) stringBytes.add(snippet);
             }
             br.close();
@@ -107,10 +107,9 @@ public class ClassifierActivity extends AppCompatActivity {
         List<Classifier.Recognition> results = classifier.recognizeImage(image);
         Classifier.Recognition bestResult = new Classifier.Recognition("", "", 0.0f, null);
 
-        for (Classifier.Recognition result : results) {
+        for (Classifier.Recognition result : results)
             if (result.getConfidence() > bestResult.getConfidence())
                 bestResult = result;
-        }
 
         return bestResult;
     }
