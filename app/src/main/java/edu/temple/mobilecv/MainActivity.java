@@ -2,6 +2,7 @@ package edu.temple.mobilecv;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
@@ -43,9 +44,10 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
+import static edu.temple.mobilecv.Constants.DEBUG_TAG;
+
 public class MainActivity extends AppCompatActivity {
 
-    public static final String DEBUG_TAG = "MobileCV";
     private static final int REQUEST_CAMERA_PERMISSION = 200;
 
     private Button takePictureButton;
@@ -206,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
 
     protected void takePicture() {
         if (camera == null) {
-            Log.e(DEBUG_TAG, "Camera device is null.");
+            Log.e(Constants.DEBUG_TAG, "Camera device is null.");
             return;
         }
 
@@ -239,7 +241,7 @@ public class MainActivity extends AppCompatActivity {
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
 
             final File file = new File(Environment.getExternalStorageDirectory()
-                    + "/mobileCV" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + ".jpg");
+                    + "/mobileCV" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + ".png");
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
@@ -263,6 +265,10 @@ public class MainActivity extends AppCompatActivity {
                     try {
                         output = new FileOutputStream(file);
                         output.write(bytes);
+
+                        Intent intent = new Intent(MainActivity.this, ClassifierActivity.class);
+                        intent.putExtra(Constants.EXTRA_IMAGE_FILEPATH, file.getAbsolutePath());
+                        startActivity(intent);
                     } finally {
                         if (null != output) output.close();
                     }

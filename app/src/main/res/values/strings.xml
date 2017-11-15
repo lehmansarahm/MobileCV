@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">MobileCV</string>
+    <string name="title_activity_classifier">ClassifierActivity</string>
 </resources>
