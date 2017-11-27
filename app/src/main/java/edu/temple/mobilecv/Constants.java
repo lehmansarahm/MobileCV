@@ -11,12 +11,14 @@ public class Constants {
     public static final float IMAGE_STD = 1;
 
     public static final String INPUT_NAME = "input";
-    public static final String OUTPUT_NAME = "output";
+    public static final String OUTPUT_NAME = "final_result";
 
     public static final String MODEL_FILE =
-            "file:///android_asset/tensorflow_inception_graph.pb";
+            "file:///android_asset/retrained_graph.pb";
+            // "file:///android_asset/tensorflow_inception_graph.pb";
     public static final String LABEL_FILE =
-            "file:///android_asset/imagenet_comp_graph_label_strings.txt";
+            "file:///android_asset/retrained_labels.txt";
+            // "file:///android_asset/imagenet_comp_graph_label_strings.txt";
 
     public static final boolean MAINTAIN_ASPECT = true;
     public static final int DEFAULT_HEIGHT = 480, DEFAULT_WIDTH = 640;
