@@ -1,3 +1,5 @@
+glass
 mug
-drinking glass
-water bottle
+unknown
+water bottle commercial
+water bottle opaque
