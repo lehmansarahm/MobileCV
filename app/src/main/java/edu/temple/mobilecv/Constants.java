@@ -1,10 +1,14 @@
 package edu.temple.mobilecv;
 
+import android.os.Environment;
+
 public class Constants {
 
     public static final String DEBUG_TAG = "MobileCV";
     public static final String EXTRA_ROTATION = "edu.temple.mobilecv.ROTATION";
     public static final String EXTRA_CSV_PATH = "edu.temple.mobilecv.CSV";
+
+    public static final String MOBILE_CV_FILEPATH = Environment.getExternalStorageDirectory() + "/mobileCV/";
 
 
     // -------------------------------------------------------------------------

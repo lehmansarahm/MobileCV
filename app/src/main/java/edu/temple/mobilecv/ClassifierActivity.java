@@ -15,6 +15,8 @@ import org.tensorflow.demo.TensorFlowImageClassifier;
 import org.tensorflow.demo.env.ImageUtils;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,9 +47,12 @@ public class ClassifierActivity extends AppCompatActivity {
         Intent intent = getIntent();
         sensorOrientation = 90 - intent.getIntExtra(Constants.EXTRA_ROTATION, 0);
         String rgbFilepath = intent.getStringExtra(Constants.EXTRA_CSV_PATH);
-        int[] rgbBytes = getRgbBytes(rgbFilepath);
+        String imgFilepath = rgbFilepath.substring(0, rgbFilepath.indexOf(".csv")) + ".jpg";
 
+        int[] rgbBytes = getRgbBytes(rgbFilepath);
         Bitmap croppedBitmap = getCroppedBitmap(rgbBytes);
+        saveBitmap(croppedBitmap, imgFilepath);
+
         ImageView finalImage = (ImageView) findViewById(R.id.imageView);
         finalImage.setImageBitmap(croppedBitmap);
 
@@ -112,6 +117,28 @@ public class ClassifierActivity extends AppCompatActivity {
                 bestResult = result;
 
         return bestResult;
+    }
+
+    private void saveBitmap(Bitmap bitmap, String filepath) {
+        File directory = new File(Constants.MOBILE_CV_FILEPATH);
+        if (!directory.exists()) directory.mkdir();
+
+        File imgFile = new File(filepath);
+        Log.i(Constants.DEBUG_TAG, "Saving image to: " + imgFile.getAbsolutePath());
+
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(imgFile);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
 }

@@ -19,7 +19,6 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
@@ -233,11 +232,10 @@ public class MainActivity extends AppCompatActivity {
             final int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
 
-            String mobileCvPath = Environment.getExternalStorageDirectory() + "/mobileCV/";
-            File mobileCvDir = new File(mobileCvPath);
+            File mobileCvDir = new File(Constants.MOBILE_CV_FILEPATH);
             if (!mobileCvDir.exists()) mobileCvDir.mkdir();
 
-            String timestampedFilePath = mobileCvPath + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+            String timestampedFilePath = Constants.MOBILE_CV_FILEPATH + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
             final File imageFile = new File(timestampedFilePath + ".jpg");
             final File csvFile = new File(timestampedFilePath + ".csv");
             final ProgressDialog dialog = new ProgressDialog(this);
