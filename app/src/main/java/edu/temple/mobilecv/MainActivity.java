@@ -233,9 +233,15 @@ public class MainActivity extends AppCompatActivity {
             final int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
 
-            final File file = new File(Environment.getExternalStorageDirectory()
-                    + "/mobileCV" + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date()) + ".csv");
+            String mobileCvPath = Environment.getExternalStorageDirectory() + "/mobileCV/";
+            File mobileCvDir = new File(mobileCvPath);
+            if (!mobileCvDir.exists()) mobileCvDir.mkdir();
+
+            String timestampedFilePath = mobileCvPath + new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(new Date());
+            final File imageFile = new File(timestampedFilePath + ".jpg");
+            final File csvFile = new File(timestampedFilePath + ".csv");
             final ProgressDialog dialog = new ProgressDialog(this);
+
             dialog.setTitle("Please wait...");
             dialog.setMessage("Classifying image.  Please wait...");
 
@@ -252,11 +258,11 @@ public class MainActivity extends AppCompatActivity {
                     Image image = null;
                     try {
                         image = reader.acquireLatestImage();
-                        byte[][] yuvBytes = new byte[3][];
                         Image.Plane[] planes = image.getPlanes();
 
+                        byte[][] yuvBytes = new byte[3][];
                         fillBytes(planes, yuvBytes);
-                        save(yuvBytes[0], yuvBytes[1], yuvBytes[2],
+                        saveCsv(yuvBytes[0], yuvBytes[1], yuvBytes[2],
                                 planes[0].getRowStride(),
                                 planes[1].getRowStride(),
                                 planes[1].getPixelStride());
@@ -267,15 +273,15 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                private void save(byte[] yData, byte[] uData, byte[] vData, int yRowStride,
-                                  int uvRowStride, int uvPixelStride) throws IOException {
+                private void saveCsv(byte[] yData, byte[] uData, byte[] vData, int yRowStride,
+                                     int uvRowStride, int uvPixelStride) throws IOException {
                     int[] rgbBytes = new int[previewWidth * previewHeight];
                     ImageUtils.convertYUV420ToARGB8888(yData, uData, vData,
                             previewWidth, previewHeight,
                             yRowStride, uvRowStride, uvPixelStride,
                             rgbBytes);
 
-                    BufferedWriter br = new BufferedWriter(new FileWriter(file));
+                    BufferedWriter br = new BufferedWriter(new FileWriter(csvFile));
                     StringBuilder sb = new StringBuilder();
                     for (int rgbByte : rgbBytes) {
                         sb.append(rgbByte);
@@ -294,7 +300,7 @@ public class MainActivity extends AppCompatActivity {
 
                     Intent intent = new Intent(MainActivity.this, ClassifierActivity.class);
                     intent.putExtra(Constants.EXTRA_ROTATION, rotation);
-                    intent.putExtra(Constants.EXTRA_CSV_PATH, file.getAbsolutePath());
+                    intent.putExtra(Constants.EXTRA_CSV_PATH, csvFile.getAbsolutePath());
                     startActivity(intent);
                 }
             };
@@ -304,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
-                    Toast.makeText(MainActivity.this, "Saved:" + file, Toast.LENGTH_LONG).show();
+                    Toast.makeText(MainActivity.this, "Saved:" + csvFile, Toast.LENGTH_LONG).show();
                     createCameraPreview();
                 }
             };
